@@ -1,4 +1,4 @@
-'use client';
+'use client'
 
 import { useState } from 'react';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
@@ -30,48 +30,63 @@ const translations = {
     error: "Lo siento, pero encontré un error. Por favor, inténtalo de nuevo más tarde.",
     dislikeButton: "No me gusta",
     intro: "Oye, ¿cómo puedo ayudar?",
-  },
+  }
 };
 
 export default function Home() {
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: translations.en.intro },
+  // States for each language's messages
+  const [messagesEn, setMessagesEn] = useState([
+    {
+      role: 'assistant',
+      content: translations.en.intro,
+    },
   ]);
-  const [message, setMessage] = useState('');
-  const [language, setLanguage] = useState('en');
-  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [messagesFr, setMessagesFr] = useState([
+    {
+      role: 'assistant',
+      content: translations.fr.intro,
+    },
+  ]);
+  const [messagesEs, setMessagesEs] = useState([
+    {
+      role: 'assistant',
+      content: translations.es.intro,
+    },
+  ]);
 
-  const handleSendMessage = async (regenerate = false, index = null) => {
+  const [message, setMessage] = useState('');
+  const [regenerateIndex, setRegenerateIndex] = useState(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [language, setLanguage] = useState('en');
+
+  const sendMessage = async (regenerate = false) => {
     const messageToSend = regenerate
-      ? messages[index]?.content || ''
+      ? getMessages().find((_, index) => index === regenerateIndex)?.content
       : message;
 
-    if (!messageToSend.trim()) return;
+    if (!messageToSend?.trim()) return;
 
-    const updatedMessages = [...messages];
-
-    if (regenerate && index !== null) {
-      updatedMessages[index] = { ...updatedMessages[index], content: '' };
+    const newMessages = [...getMessages()];
+    if (regenerate) {
+      newMessages[messagesEn.length - 1] = { ...newMessages[regenerateIndex], content: '' };
     } else {
-      updatedMessages.push({ role: 'user', content: messageToSend });
-      updatedMessages.push({ role: 'assistant', content: '' });
+      newMessages.push({ role: 'user', content: messageToSend });
+      newMessages.push({ role: 'assistant', content: '' });
     }
 
-    setMessages(updatedMessages);
+    updateMessages(newMessages);
 
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: updatedMessages,
-          regenerate,
-          language,
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages: newMessages, regenerate, language }),
       });
 
       if (!response.ok) {
-        throw new Error('Network error');
+        throw new Error('Network response was not ok');
       }
 
       const reader = response.body.getReader();
@@ -81,43 +96,70 @@ export default function Home() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        newContent += decoder.decode(value, { stream: true });
+        const text = decoder.decode(value, { stream: true });
+        newContent += text.replace(/###\s*|\*\*.*?\*\*|\*\*/g, '');
 
-        setMessages((prevMessages) => {
-          const tempMessages = [...prevMessages];
-          if (regenerate && index !== null) {
-            tempMessages[index] = {
-              ...tempMessages[index],
-              content: newContent,
-            };
+        updateMessages((prevMessages) => {
+          const updatedMessages = [...prevMessages];
+          if (regenerate) {
+            updatedMessages[updatedMessages.length - 1] = { ...updatedMessages[regenerateIndex], content: newContent };
           } else {
-            tempMessages[tempMessages.length - 1] = {
-              role: 'assistant',
-              content: newContent,
-            };
+            updatedMessages[updatedMessages.length - 1] = { role: 'assistant', content: newContent };
           }
-          return tempMessages;
+          return updatedMessages;
         });
       }
     } catch (error) {
-      setMessages((prevMessages) => [
+      console.error('Error:', error);
+      updateMessages((prevMessages) => [
         ...prevMessages,
         { role: 'assistant', content: translations[language].error },
       ]);
     } finally {
       setIsRegenerating(false);
-      setMessage('');
     }
   };
 
   const handleDislike = (index) => {
+    setRegenerateIndex(index);
     setIsRegenerating(true);
-    handleSendMessage(true, index);
+    sendMessage(true);
+  };
+
+  const handleSendMessage = () => {
+    if (message.trim()) {
+      if (isRegenerating) {
+        setIsRegenerating(false);
+      }
+      sendMessage();
+      setMessage('');
+    }
   };
 
   const handleLanguageChange = (lang) => {
     setLanguage(lang);
-    setMessages([{ role: 'assistant', content: translations[lang].intro }]);
+    // Reset messages when changing language
+    switch (lang) {
+      case 'fr': setMessagesFr([...messagesFr]); break;
+      case 'es': setMessagesEs([...messagesEs]); break;
+      default: setMessagesEn([...messagesEn]); break;
+    }
+  };
+
+  const getMessages = () => {
+    switch (language) {
+      case 'fr': return messagesFr;
+      case 'es': return messagesEs;
+      default: return messagesEn;
+    }
+  };
+
+  const updateMessages = (newMessages) => {
+    switch (language) {
+      case 'fr': setMessagesFr(newMessages); break;
+      case 'es': setMessagesEs(newMessages); break;
+      default: setMessagesEn(newMessages); break;
+    }
   };
 
   return (
@@ -131,47 +173,84 @@ export default function Home() {
       bgcolor="#0081C8"
       p={3}
     >
-      <Box display="flex" justifyContent="center" p={2}>
+      <Box
+        width="100%"
+        display="flex"
+        justifyContent="center"
+        p={2}
+      >
         <Box
           component="img"
           src="/olympics.png"
           alt="Olympics"
-          sx={{ maxWidth: '200px', maxHeight: '200px', width: 'auto', height: 'auto' }}
+          sx={{
+            maxWidth: { xs: '100px', sm: '150px', md: '200px' }, // Adjust sizes as needed
+            maxHeight: { xs: '100px', sm: '150px', md: '200px' },
+            width: 'auto',
+            height: 'auto',
+          }}
         />
       </Box>
       <Stack
         direction="column"
-        width="70vw"
+        width={{ xs: '95vw', sm: '85vw', md: '70vw' }}
         height="80vh"
         borderRadius={3}
         boxShadow={6}
+        overflow="hidden"
         bgcolor="white"
       >
-        <Box bgcolor="#EE334E" p={2}>
-          <Typography variant="h5" fontWeight="bold" color="#fff">
+        {/* Header Section */}
+        <Box
+          bgcolor="#EE334E"
+          p={2}
+          borderBottom="1px solid #ccc"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+        >
+          <Typography variant="h5" fontWeight="bold" color="#333">
             {translations[language].header}
           </Typography>
         </Box>
-        <Box p={2} bgcolor="#f5f5f5">
+
+        {/* Language Selector */}
+        <Box p={2} bgcolor="#f5f5f5" borderBottom="1px solid #ccc">
           <Typography variant="body1" fontWeight="bold">{translations[language].selectLanguage}</Typography>
           <Stack direction="row" spacing={1}>
-            {['en', 'fr', 'es'].map((lang) => (
-              <Button
-                key={lang}
-                variant={language === lang ? 'contained' : 'outlined'}
-                onClick={() => handleLanguageChange(lang)}
-                sx={{
-                  bgcolor: language === lang ? '#FCB131' : 'transparent',
-                  color: language === lang ? 'black' : '#FCB131',
-                }}
-              >
-                {lang.toUpperCase()}
-              </Button>
-            ))}
+            <Button
+              variant={language === 'en' ? 'contained' : 'outlined'}
+              onClick={() => handleLanguageChange('en')}
+              sx={{ bgcolor: language === 'en' ? '#FCB131' : 'transparent', color: language === 'en' ? 'black' : '#FCB131' }}
+            >
+              English
+            </Button>
+            <Button
+              variant={language === 'fr' ? 'contained' : 'outlined'}
+              onClick={() => handleLanguageChange('fr')}
+              sx={{ bgcolor: language === 'fr' ? '#FCB131' : 'transparent', color: language === 'fr' ? 'black' : '#FCB131' }}
+            >
+              French
+            </Button>
+            <Button
+              variant={language === 'es' ? 'contained' : 'outlined'}
+              onClick={() => handleLanguageChange('es')}
+              sx={{ bgcolor: language === 'es' ? '#FCB131' : 'transparent', color: language === 'es' ? 'black' : '#FCB131' }}
+            >
+              Spanish
+            </Button>
           </Stack>
         </Box>
-        <Stack flexGrow={1} p={2} overflow="auto" bgcolor="#fafafa">
-          {messages.map((msg, index) => (
+
+        {/* Messages Section */}
+        <Stack
+          direction="column"
+          flexGrow={1}
+          overflow="auto"
+          p={2}
+          bgcolor="#fafafa"
+        >
+          {getMessages().map((msg, index) => (
             <Box
               key={index}
               display="flex"
@@ -184,37 +263,74 @@ export default function Home() {
                 color="white"
                 borderRadius={6}
                 p={2}
+                maxWidth="80%"
+                sx={{ wordBreak: 'break-word' }}
               >
                 {msg.content}
               </Box>
-              {msg.role === 'assistant' && index === messages.length - 1 && (
-                <Button
-                  variant="outlined"
-                  onClick={() => handleDislike(index)}
-                  sx={{ mt: 1, borderColor: '#FCB131', color: '#FCB131' }}
-                >
-                  {translations[language].dislikeButton}
-                </Button>
+              {msg.role === 'assistant' && index === getMessages().length - 1 && (
+                <Box mt={1} display="flex" justifyContent="center">
+                  <Button
+                    variant="outlined"
+                    onClick={() => handleDislike(index)}
+                    sx={{
+                      borderColor: '#FCB131',
+                      color: '#FCB131',
+                      '&:hover': {
+                        borderColor: '#f9a825',
+                        color: '#f9a825',
+                      },
+                    }}
+                  >
+                    {translations[language].dislikeButton}
+                  </Button>
+                </Box>
               )}
             </Box>
           ))}
         </Stack>
-        <Stack direction="row" p={1}>
+        {/* Input Section */}
+        <Stack direction="row" spacing={1} p={1} alignItems="center">
           <TextField
-            fullWidth
             label={translations[language].placeholder}
+            fullWidth
             variant="outlined"
             size="small"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSendMessage();
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            sx={{
+              '& .MuiInputLabel-root': {
+                color: 'black',
+              },
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: 'black',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'black',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'black',
+                },
+              },
             }}
           />
           <Button
             variant="contained"
-            onClick={() => handleSendMessage()}
-            sx={{ bgcolor: '#FCB131', color: 'black', ml: 1 }}
+            onClick={handleSendMessage}
+            sx={{
+              bgcolor: '#FCB131',
+              color: 'black',
+              '&:hover': {
+                bgcolor: '#f9a825',
+              },
+            }}
           >
             {translations[language].sendButton}
           </Button>
@@ -223,3 +339,4 @@ export default function Home() {
     </Box>
   );
 }
+
