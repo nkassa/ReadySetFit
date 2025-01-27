@@ -145,7 +145,7 @@ export default function Home() {
       flexDirection="column"
       justifyContent="center"
       alignItems="center"
-      bgcolor="#0081C8"
+      bgcolor="#2C3E50" // Dark gym-like background
       p={3}
     >
       <Box
@@ -159,7 +159,7 @@ export default function Home() {
           src="/olympics.png"
           alt="Olympics"
           sx={{
-            maxWidth: { xs: '100px', sm: '150px', md: '200px' }, // Adjust sizes as needed
+            maxWidth: { xs: '100px', sm: '150px', md: '200px' },
             maxHeight: { xs: '100px', sm: '150px', md: '200px' },
             width: 'auto',
             height: 'auto',
@@ -173,25 +173,25 @@ export default function Home() {
         borderRadius={3}
         boxShadow={6}
         overflow="hidden"
-        bgcolor="white"
+        bgcolor="#34495E" // Dark gray-blue background for chat container
       >
         {/* Header Section */}
         <Box
-          bgcolor="#EE334E"
+          bgcolor="#E74C3C" // Red accent
           p={2}
           borderBottom="1px solid #ccc"
           display="flex"
           justifyContent="center"
           alignItems="center"
         >
-          <Typography variant="h5" fontWeight="bold" color="#333">
+          <Typography variant="h5" fontWeight="bold" color="white">
             {translations[language].header}
           </Typography>
         </Box>
 
         {/* Language Selector */}
-        <Box p={2} bgcolor="#f5f5f5" borderBottom="1px solid #ccc">
-          <Typography variant="body1" fontWeight="bold">{translations[language].selectLanguage}</Typography>
+        <Box p={2} bgcolor="#2C3E50" borderBottom="1px solid #ccc">
+          <Typography variant="body1" fontWeight="bold" color="white">{translations[language].selectLanguage}</Typography>
           <Stack direction="row" spacing={1}>
             <Button
               variant={language === 'en' ? 'contained' : 'outlined'}
@@ -223,7 +223,7 @@ export default function Home() {
           flexGrow={1}
           overflow="auto"
           p={2}
-          bgcolor="#fafafa"
+          bgcolor="#34495E" // Darker gray for message area
         >
           {getMessages().map((msg, index) => (
             <Box
@@ -234,7 +234,7 @@ export default function Home() {
               p={1}
             >
               <Box
-                bgcolor={msg.role === 'assistant' ? '#009147' : '#37ad70'}
+                bgcolor={msg.role === 'assistant' ? '#1ABC9C' : '#E67E22'} // Gym-like colors: teal for assistant, orange for user
                 color="white"
                 borderRadius={6}
                 p={2}
@@ -282,7 +282,7 @@ export default function Home() {
             }}
             sx={{
               '& .MuiInputLabel-root': {
-                color: 'black',
+                color: 'white',
               },
             }}
           />
@@ -291,6 +291,7 @@ export default function Home() {
             color="primary"
             onClick={handleSendMessage}
             disabled={loading}
+            sx={{ bgcolor: '#FCB131' }} // Bright gym-themed yellow
           >
             {loading ? <CircularProgress size={24} color="inherit" /> : translations[language].sendButton}
           </Button>
