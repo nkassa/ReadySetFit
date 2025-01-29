@@ -281,10 +281,16 @@ export default function Home() {
               }
             }}
             sx={{
-              '& .MuiInputLabel-root': {
-                color: 'white',
-              },
-            }}
+    '& .MuiInputLabel-root': {
+      color: 'white',
+    },
+    '& .MuiOutlinedInput-root': {
+      color: 'white', // Set the text color to white
+      '& input': {
+        color: 'white', // Ensure the input text itself is white
+      },
+    },
+  }}
           />
           <Button
             variant="contained"
